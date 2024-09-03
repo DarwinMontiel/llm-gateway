@@ -58,3 +58,36 @@ curl http://localhost:11434/api/generate -d '{
   "stream": false
 }'
 ````
+
+<h1>GroqCloud</h1>
+
+Registramos y creamos cuenta si no la tenemos, creamos llave 
+Podemos Revisar la documentacion en este apartado https://console.groq.com/docs/quickstart
+Ejemplo:
+````bash
+export GROQ_API_KEY=TU_API_KEY
+````
+Revisamos que la llave este bien cargada
+
+````bash
+echo $GROQ_API_KEY
+````
+Ejecutamos ya teniendo la clave 
+
+````bash
+curl "https://api.groq.com/openai/v1/chat/completions" \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${GROQ_API_KEY}" \
+  -d '{
+         "messages": [
+           {
+             "role": "user",
+             "content": "¿Porque el cielo es Azul?"
+           }
+         ],
+         "model": "llama3-8b-8192",
+         "stream": false
+       }'
+````
+<h1>W3 Schols</h1>
