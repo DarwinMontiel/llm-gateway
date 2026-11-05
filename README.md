@@ -1,130 +1,120 @@
-<h1>Pruebas
-Lenguaje largo usando ollama</h1>
+<div align="center">
 
+# llm-gateway
 
-<!-- Sección de pruebas con el uso del lenguaje largo a través de ollama -->
+**Cliente Python unificado para modelos de lenguaje locales (Ollama) y en la nube (Groq):
+una sola interfaz, streaming, reintentos con backoff y *fallback* automático entre proveedores.**
 
-<h1> #1. Instalacion </h1>
-El primer paso es descargamos [ollama] (https://ollama.com/download/linux) de su pagina web, y ejecutamos el siguiente comando
+[![CI](https://github.com/DarwinMontiel/llm-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/DarwinMontiel/llm-gateway/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)
+![httpx](https://img.shields.io/badge/httpx-sync%20%2B%20streaming-1f5082)
+![Ollama](https://img.shields.io/badge/Ollama-local-000000)
+![Groq](https://img.shields.io/badge/Groq-cloud-F55036)
+![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-<!-- Explicación sobre cómo instalar ollama -->
+</div>
 
-````bash
-curl -fsSL https://ollama.com/install.sh | sh
-````
-<!-- Comando para descargar e instalar ollama usando curl. El script de instalación se ejecuta directamente desde la URL proporcionada. -->
+> **English summary** — A small, typed Python library and CLI that puts local LLMs (Ollama) and
+> cloud LLMs (Groq, OpenAI-compatible) behind one interface. It handles NDJSON and SSE
+> streaming, translates HTTP/transport failures into a clear error hierarchy, retries transient
+> errors with exponential backoff (honoring `Retry-After`), and falls back from local to cloud.
+> Fully tested offline with `httpx.MockTransport`, including a real captured Ollama stream.
 
-<h1>#2. Correr el servidor</h1>
+---
 
-para iniciar corremos el comando
+## Por qué
 
-<!-- Explicación sobre cómo iniciar el servidor de ollama -->
+En automatización con IA (clasificar correos de cobranza, resumir gestiones, extraer datos de
+documentos) conviene usar un **modelo local** por costo y privacidad, pero tener un **modelo en la
+nube** cuando el local no está disponible o la tarea es más difícil. Cada proveedor tiene su
+propio formato de API, de streaming y de errores. `llm-gateway` los unifica.
 
-````bash
-ollama serve
-````
-<!-- Comando para iniciar el servidor de ollama. Esto pone en marcha el servicio para que puedas interactuar con él. -->
+Este repositorio nació como notas de laboratorio de *Sistemas Inteligentes* (2024) y se convirtió
+en una librería con pruebas; las notas originales están en
+[docs/guia-ollama-groq.md](docs/guia-ollama-groq.md).
 
-<h1>#3. Import module IA</h1>
-buscamos el modelo a descargar en https://ollama.com/library
+## Uso
 
-<!-- Instrucciones para importar un modelo de inteligencia artificial desde la biblioteca de ollama -->
+```python
+from llm_gateway.config import build_gateway
 
-luego lanzamos el comado, Abrir otra ventana de comando 
+gateway = build_gateway(["ollama", "groq"])          # local primero, nube de respaldo
 
-<!-- Aquí se indica que se debe abrir una nueva ventana de terminal para ejecutar el siguiente comando -->
+answer = gateway.complete("Resume esta gestión en una frase: ...", system="Responde en español")
+print(answer.text, answer.provider, answer.latency_ms)
 
-````bash
-ollama pull tinyllama
-````
-ollama list me muestra los modelos importados
+for chunk in gateway.stream("Explica qué es una promesa de pago"):
+    print(chunk, end="")
+```
 
-<!-- Explicación de cómo listar los modelos importados -->
+CLI:
 
-````bash
-ollama list
-````
-<!-- Comando para listar todos los modelos que se han importado en tu sistema. -->
+```bash
+pip install -e .
+llm ask "¿Por qué el cielo es azul?"                 # auto: Ollama → Groq
+llm ask "Hola" --provider groq --no-stream
+llm compare "Explica el PAR30 en una frase"          # latencia y tokens de cada proveedor
+llm models                                           # modelos descargados en Ollama
+```
 
-para hacer una pregunta 
+Configuración por entorno o `.env` (ver [.env.example](.env.example)): `OLLAMA_URL`,
+`OLLAMA_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `TIMEOUT_SECONDS`. La clave se maneja como
+`SecretStr`: no aparece en logs ni en `repr`.
 
-<!-- Instrucciones para ejecutar consultas al modelo importado -->
+## Diseño
 
-````bash
-ollama run tinyllama (se coloca la pregunta aqui)
-````
-<!-- Comando para ejecutar una consulta al modelo "tinyllama". Reemplaza "(se coloca la pregunta aqui)" con la pregunta que deseas hacer. -->
+```mermaid
+flowchart LR
+    APP[Tu código / CLI] --> GW[Gateway]
+    GW -->|1 · reintentos| OL[OllamaProvider<br/>/api/chat · NDJSON]
+    GW -->|2 · fallback| GQ[GroqProvider<br/>/chat/completions · SSE]
+    OL --> O[(Ollama local)]
+    GQ --> G[(Groq API)]
+```
 
-comandos aqui = https://github.com/ollama/ollama/blob/main/docs/api.md
+| Situación | Comportamiento |
+|---|---|
+| Conexión rechazada, *timeout*, HTTP 5xx | `ProviderUnavailableError` → reintento con backoff (0,5 s, 1 s…) → siguiente proveedor |
+| HTTP 429 | `RateLimitedError` → espera `Retry-After` → siguiente proveedor |
+| HTTP 401/403 o falta la clave | `AuthenticationError` → **no** se reintenta ni se oculta |
+| Todos fallan | `AllProvidersFailedError` con el error de cada proveedor |
+| Streaming | *Fallback* solo si el proveedor falla **antes** del primer fragmento (nunca mezcla respuestas) |
+| Modelo pedido | Se aplica al primer proveedor; los de respaldo usan su modelo por defecto |
 
--X = metodo que quiero usar
+Los proveedores implementan un `Protocol` (`complete` y `stream`), así que agregar otro (OpenAI,
+Azure, Bedrock) es una clase nueva sin tocar el gateway.
 
-<!-- Indica que los comandos adicionales están documentados en el enlace proporcionado, y "X" representa el método que quieres usar -->
+## Pruebas
 
-````bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "tinyllama",
-  "prompt": "Why is the sky blue?"
-}'
-````
+```bash
+pip install -e ".[dev]"
+pytest --cov            # 24 pruebas, sin red (httpx.MockTransport)
+ruff check . && mypy src
+```
 
-<!-- Comando curl para enviar una solicitud POST a la API del servidor local (puerto 11434) con el modelo "tinyllama" y un "prompt" (pregunta). -->
+Cubren el formato de cada API, el parseo de NDJSON y SSE (incluida una **captura real** de
+Ollama), la traducción de errores HTTP y de red, los reintentos con `Retry-After`, el *fallback*
+y que la clave no se filtre en `repr`.
 
-````bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "tinyllama",
-  "prompt": "Why is the sky blue?"
-}' -o salida.md
-````
-<!-- Comando curl similar al anterior, pero con la opción "-o salida.md" para guardar la respuesta de la API en un archivo llamado "salida.md". -->
+## Estructura
 
-````bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "tinyllama",
-  "prompt": "Why is the sky blue?",
-  "stream": false
-}'
-````
-<!-- Comando curl para enviar una solicitud POST a la API con el modelo "tinyllama" y un "prompt" (pregunta), con la opción `"stream": false` para recibir la respuesta completa en lugar de un flujo de datos. -->
+```
+src/llm_gateway/
+├── types.py            # Message, Completion
+├── errors.py           # jerarquía de errores
+├── retry.py            # backoff exponencial
+├── gateway.py          # cadena de proveedores con fallback
+├── config.py           # settings (.env) y fábricas
+├── cli.py              # llm ask | compare | models
+└── providers/          # ollama.py (NDJSON), groq.py (SSE), base.py
+examples/               # del primer laboratorio al gateway con fallback
+docs/                   # guía de Ollama y Groq
+```
 
-<h1>GroqCloud</h1>
+## Autor
 
-<!-- Sección sobre cómo registrarse y usar GroqCloud -->
+**Darwin Montiel Mora** — Desarrollador RPA & Backend · Ingeniero de Sistemas
+[LinkedIn](https://www.linkedin.com/in/darwin-montiel-mora-925216206) · [GitHub](https://github.com/DarwinMontiel)
 
-Registramos y creamos cuenta si no la tenemos, creamos llave 
-Podemos Revisar la documentacion en este apartado https://console.groq.com/docs/quickstart
-
-<!-- Comando para exportar la clave API de GroqCloud como una variable de entorno llamada `GROQ_API_KEY`. -->
-
-Ejemplo:
-````bash
-export GROQ_API_KEY=TU_API_KEY
-````
-Revisamos que la llave este bien cargada
-
-````bash
-echo $GROQ_API_KEY
-````
-<!-- Comando para verificar que la variable de entorno `GROQ_API_KEY` ha sido cargada correctamente y muestra su valor. -->
-
-Ejecutamos ya teniendo la clave 
-
-````bash
-curl "https://api.groq.com/openai/v1/chat/completions" \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${GROQ_API_KEY}" \
-  -d '{
-         "messages": [
-           {
-             "role": "user",
-             "content": "¿Porque el cielo es Azul?"
-           }
-         ],
-         "model": "llama3-8b-8192",
-         "stream": false
-       }'
-````
-<h1>W3 Schols</h1>
-
-<!-- Comando curl para enviar una solicitud POST a la API de GroqCloud con una pregunta en el formato requerido, usando la clave API para autorización. -->
+Licencia [MIT](LICENSE).
