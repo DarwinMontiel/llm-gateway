@@ -39,7 +39,7 @@ en una librería con pruebas; las notas originales están en
 ```python
 from llm_gateway.config import build_gateway
 
-gateway = build_gateway(["ollama", "groq"])          # local primero, nube de respaldo
+gateway = build_gateway(["ollama", "groq"])  # local primero, nube de respaldo
 
 answer = gateway.complete("Resume esta gestión en una frase: ...", system="Responde en español")
 print(answer.text, answer.provider, answer.latency_ms)
