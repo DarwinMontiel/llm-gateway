@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -39,13 +39,35 @@ class GroqProvider:
         timeout: float = 30.0,
         client: httpx.Client | None = None,
     ) -> None:
-        if not api_key:
+        self.default_model = default_model
+        self._api_key = api_key or None
+        self._owns_client = client is None
+        self._client = client or httpx.Client(base_url=base_url, timeout=timeout)
+
+    @property
+    def configured(self) -> bool:
+        """``True`` si hay una clave; sin ella el proveedor existe pero no puede responder."""
+        return self._api_key is not None
+
+    def _headers(self) -> dict[str, str]:
+        # La clave se valida al usarla (no al construir) para que una cadena "local primero"
+        # funcione aunque la nube no esté configurada.
+        if self._api_key is None:
             raise AuthenticationError(
                 self.name, "falta GROQ_API_KEY (defínela en el entorno o en .env)"
             )
-        self.default_model = default_model
-        self._client = client or httpx.Client(base_url=base_url, timeout=timeout)
-        self._headers = {"Authorization": f"Bearer {api_key}"}
+        return {"Authorization": f"Bearer {self._api_key}"}
+
+    def close(self) -> None:
+        """Cierra el cliente HTTP si lo creó este proveedor (uno inyectado lo cierra su dueño)."""
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     def _payload(
         self, messages: Sequence[Message], model: str | None, temperature: float, stream: bool
@@ -60,10 +82,11 @@ class GroqProvider:
     def complete(
         self, messages: Sequence[Message], *, model: str | None = None, temperature: float = 0.2
     ) -> Completion:
+        headers = self._headers()
         payload = self._payload(messages, model, temperature, stream=False)
         started = time.perf_counter()
         try:
-            response = self._client.post("/chat/completions", json=payload, headers=self._headers)
+            response = self._client.post("/chat/completions", json=payload, headers=headers)
         except httpx.HTTPError as error:
             raise translate_transport_errors(self.name, error) from error
         raise_for_status(self.name, response)
@@ -81,10 +104,11 @@ class GroqProvider:
     def stream(
         self, messages: Sequence[Message], *, model: str | None = None, temperature: float = 0.2
     ) -> Iterator[str]:
+        headers = self._headers()
         payload = self._payload(messages, model, temperature, stream=True)
         try:
             with self._client.stream(
-                "POST", "/chat/completions", json=payload, headers=self._headers
+                "POST", "/chat/completions", json=payload, headers=headers
             ) as response:
                 if not response.is_success:
                     response.read()

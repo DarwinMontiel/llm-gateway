@@ -42,7 +42,7 @@ def test_stream_parses_real_ndjson_capture(make_client, ollama_stream_body) -> N
         client=make_client(lambda _: httpx.Response(200, content=ollama_stream_body))
     )
 
-    text = "".join(provider.stream([Message.user("Why is the sky blue?")]))
+    text = "".join(provider.stream([Message.user("¿Por qué el cielo es azul?")]))
 
     expected = "".join(
         json.loads(line).get("response", "") for line in ollama_stream_body.splitlines()
@@ -87,3 +87,13 @@ def test_server_error_is_unavailable_and_list_models(make_client) -> None:  # ty
     assert provider.list_models() == ["llama3.2", "tinyllama"]
     with pytest.raises(ProviderUnavailableError, match="503"):
         list(provider.stream([Message.user("hola")]))
+
+
+def test_close_only_closes_its_own_client(make_client) -> None:  # type: ignore[no-untyped-def]
+    injected = make_client(lambda _: httpx.Response(200))
+    OllamaProvider(client=injected).close()
+    assert not injected.is_closed
+
+    with OllamaProvider() as own:
+        pass
+    assert own._client.is_closed

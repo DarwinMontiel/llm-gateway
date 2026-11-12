@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Iterable, Iterator, Sequence
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -44,7 +44,19 @@ class OllamaProvider:
         client: httpx.Client | None = None,
     ) -> None:
         self.default_model = default_model
+        self._owns_client = client is None
         self._client = client or httpx.Client(base_url=base_url, timeout=timeout)
+
+    def close(self) -> None:
+        """Cierra el cliente HTTP si lo creó este proveedor (uno inyectado lo cierra su dueño)."""
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     def _payload(
         self, messages: Sequence[Message], model: str | None, temperature: float, stream: bool

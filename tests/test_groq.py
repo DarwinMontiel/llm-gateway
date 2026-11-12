@@ -9,9 +9,27 @@ from puente_llm import AuthenticationError, Message, RateLimitedError
 from puente_llm.providers.groq import GroqProvider, iter_sse_text
 
 
-def test_requires_api_key() -> None:
+def test_missing_api_key_fails_on_use_without_calling_the_api(make_client) -> None:  # type: ignore[no-untyped-def]
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no debe salir a la red sin clave")
+
+    provider = GroqProvider(api_key=None, client=make_client(handler))
+    assert provider.configured is False
     with pytest.raises(AuthenticationError, match="GROQ_API_KEY"):
-        GroqProvider(api_key=None)
+        provider.complete([Message.user("hola")])
+    with pytest.raises(AuthenticationError, match="GROQ_API_KEY"):
+        list(provider.stream([Message.user("hola")]))
+
+
+def test_close_only_closes_its_own_client(make_client) -> None:  # type: ignore[no-untyped-def]
+    injected = make_client(lambda _: httpx.Response(200))
+    with GroqProvider("k", client=injected):
+        pass
+    assert not injected.is_closed  # el cliente inyectado lo cierra quien lo creó
+
+    with GroqProvider("k") as own:
+        pass
+    assert own._client.is_closed
 
 
 def test_complete_sends_bearer_and_parses_openai_format(make_client) -> None:  # type: ignore[no-untyped-def]
