@@ -1,7 +1,7 @@
 # Guía: LLM locales con Ollama y en la nube con Groq
 
 Notas de laboratorio de la asignatura *Sistemas Inteligentes* (2024), reorganizadas. Explican
-las dos APIs que `llm-gateway` envuelve.
+las dos APIs que `puente-llm` envuelve.
 
 ## 1. Ollama (modelos locales)
 
@@ -37,8 +37,10 @@ métricas (`eval_count`, `total_duration`…). El archivo
 es una captura real de esa salida y se usa en las pruebas del parser.
 
 > **Lección del laboratorio:** `tinyllama` respondió que el cielo es azul "por el cromo en sus
-> pigmentos". Los modelos muy pequeños alucinan con facilidad; por eso el gateway permite
-> comparar la misma pregunta en un modelo local y en uno más grande en la nube.
+> pigmentos". Los modelos muy pequeños alucinan con facilidad; por eso existe `puente compara`,
+> que envía la misma pregunta a un modelo local y a uno más grande en la nube. En cobranza la
+> lección pesa más: una etiqueta inventada cambia la gestión de un cliente, así que el ejemplo
+> de clasificación acepta solo una lista cerrada y deja lo demás para revisión humana.
 
 Para conversaciones con roles (`system`, `user`, `assistant`) se usa `POST /api/chat`, que es
 el endpoint que utiliza `OllamaProvider`.
