@@ -34,7 +34,7 @@ cliente reintenta, y si el modelo local sigue sin responder, pasa a la nube y de
 (salida ilustrativa; los avisos tienen el formato real del log):
 
 ```text
-$ puente -v pregunta "Clasifica: el cliente promete pagar el viernes 15"
+$ puente -v pregunta "El cliente promete pagar el viernes 15" \n    --sistema "Clasifica la nota. Responde solo con una etiqueta: promesa_de_pago, reclamo, renuencia..."
   · [ollama] no se pudo conectar (ConnectError); intento 2 de 2 en 0.5 s
   · [ollama] no se pudo conectar (ConnectError); paso a groq
 promesa_de_pago
@@ -111,7 +111,7 @@ El semáforo de errores:
 | | Situación | Comportamiento |
 |---|---|---|
 | 🟢 | Conexión rechazada, *timeout*, HTTP 5xx | `ProviderUnavailableError` → reintento con backoff (0,5 s, 1 s…) → siguiente proveedor |
-| 🟡 | HTTP 429 | `RateLimitedError` → espera `Retry-After` (segundos o fecha HTTP) → siguiente proveedor |
+| 🟡 | HTTP 429 | `RateLimitedError` → espera `Retry-After` (segundos o fecha HTTP, hasta 30 s; si pide más, no espera) → siguiente proveedor |
 | 🔴 | HTTP 401/403 o falta la clave | `AuthenticationError` → **no** se reintenta ni se oculta |
 | ⚫ | Todos fallan | `AllProvidersFailedError` con el error de cada proveedor |
 
@@ -139,7 +139,7 @@ Los proveedores implementan un `Protocol` (`complete` y `stream`), así que agre
 
 ```bash
 pip install -e ".[dev]"
-pytest --cov            # 59 pruebas, sin red (httpx.MockTransport)
+pytest --cov            # sin red: httpx.MockTransport
 ruff check . && ruff format --check . && mypy src
 ```
 

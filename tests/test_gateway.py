@@ -183,6 +183,16 @@ def test_with_retries_respects_retry_after() -> None:
     assert sleeps == [4.0]
 
 
+def test_long_retry_after_is_not_waited_and_falls_back() -> None:
+    sleeps: list[float] = []
+    slow = FakeProvider("local", failures=[RateLimitedError("local", "429", retry_after=3600.0)])
+    result = Gateway([slow, FakeProvider("cloud")], attempts=3, sleep=sleeps.append).complete(
+        "hola"
+    )
+    assert result.provider == "cloud"
+    assert sleeps == []
+
+
 def test_gateway_requires_providers() -> None:
     with pytest.raises(ValueError, match="al menos un proveedor"):
         Gateway([])

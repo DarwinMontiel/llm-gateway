@@ -27,6 +27,8 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y e
 - `stream` reintenta con backoff antes del primer fragmento, como `complete`, en lugar de cambiar
   de proveedor al primer fallo.
 - Una cabecera `Retry-After` con fecha HTTP ya no provoca `ValueError`; se convierte a segundos.
+- Un `Retry-After` mayor a 30 s (`max_wait`) ya no bloquea el proceso: se pasa al siguiente
+  proveedor sin esperar.
 
 ## [1.0.0] - 2026-11-05
 

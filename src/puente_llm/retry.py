@@ -19,11 +19,14 @@ def with_retries(
     attempts: int = 3,
     base_delay: float = 0.5,
     sleep: Callable[[float], None] = time.sleep,
+    max_wait: float = 30.0,
 ) -> T:
     """Reintenta errores transitorios con backoff exponencial (0.5 s, 1 s, 2 s…).
 
-    En HTTP 429 respeta ``Retry-After`` si el proveedor lo envía. Los errores de autenticación
-    u otros no transitorios se propagan de inmediato.
+    En HTTP 429 respeta ``Retry-After`` si el proveedor lo envía. Si la espera pedida supera
+    ``max_wait`` segundos, no se espera: el error se propaga para que el gateway pase al
+    siguiente proveedor en lugar de bloquear el proceso. Los errores de autenticación u otros
+    no transitorios se propagan de inmediato.
     """
     for attempt in range(1, attempts + 1):
         try:
@@ -33,6 +36,14 @@ def with_retries(
                 raise
             delay = base_delay * 2 ** (attempt - 1)
             if isinstance(error, RateLimitedError) and error.retry_after:
+                if error.retry_after > max_wait:
+                    logger.warning(
+                        "%s; pide esperar %.0f s (máximo %.0f s), no se reintenta",
+                        error,
+                        error.retry_after,
+                        max_wait,
+                    )
+                    raise
                 delay = max(delay, error.retry_after)
             logger.warning("%s; intento %d de %d en %.1f s", error, attempt + 1, attempts, delay)
             sleep(delay)
