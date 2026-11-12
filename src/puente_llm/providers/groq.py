@@ -9,9 +9,9 @@ from typing import Any
 
 import httpx
 
-from llm_gateway.errors import AuthenticationError
-from llm_gateway.providers.base import raise_for_status, translate_transport_errors
-from llm_gateway.types import Completion, Message
+from puente_llm.errors import AuthenticationError
+from puente_llm.providers.base import raise_for_status, translate_transport_errors
+from puente_llm.types import Completion, Message
 
 
 def iter_sse_text(lines: Iterable[str]) -> Iterator[str]:

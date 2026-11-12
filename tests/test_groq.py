@@ -5,8 +5,8 @@ import json
 import httpx
 import pytest
 
-from llm_gateway import AuthenticationError, Message, RateLimitedError
-from llm_gateway.providers.groq import GroqProvider, iter_sse_text
+from puente_llm import AuthenticationError, Message, RateLimitedError
+from puente_llm.providers.groq import GroqProvider, iter_sse_text
 
 
 def test_requires_api_key() -> None:

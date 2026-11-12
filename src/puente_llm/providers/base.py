@@ -5,13 +5,13 @@ from typing import Protocol
 
 import httpx
 
-from llm_gateway.errors import (
+from puente_llm.errors import (
     AuthenticationError,
     ProviderError,
     ProviderUnavailableError,
     RateLimitedError,
 )
-from llm_gateway.types import Completion, Message
+from puente_llm.types import Completion, Message
 
 
 class Provider(Protocol):

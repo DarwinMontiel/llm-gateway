@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from llm_gateway import AuthenticationError
-from llm_gateway.config import Settings, build_gateway, build_provider
-from llm_gateway.providers import GroqProvider, OllamaProvider
+from puente_llm import AuthenticationError
+from puente_llm.config import Settings, build_gateway, build_provider
+from puente_llm.providers import GroqProvider, OllamaProvider
 
 
 def test_settings_read_environment(monkeypatch: pytest.MonkeyPatch) -> None:

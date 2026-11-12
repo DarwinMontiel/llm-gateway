@@ -3,9 +3,9 @@ from __future__ import annotations
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from llm_gateway.gateway import Gateway
-from llm_gateway.providers import GroqProvider, OllamaProvider
-from llm_gateway.providers.base import Provider
+from puente_llm.gateway import Gateway
+from puente_llm.providers import GroqProvider, OllamaProvider
+from puente_llm.providers.base import Provider
 
 
 class Settings(BaseSettings):

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import typer
 
-from llm_gateway.config import Settings, build_gateway, build_provider
-from llm_gateway.errors import AllProvidersFailedError, ProviderError
-from llm_gateway.types import Message
+from puente_llm.config import Settings, build_gateway, build_provider
+from puente_llm.errors import AllProvidersFailedError, ProviderError
+from puente_llm.types import Message
 
 app = typer.Typer(help="Cliente unificado para Ollama (local) y Groq (nube).", no_args_is_help=True)
 
@@ -60,7 +60,7 @@ def compare(prompt: str = typer.Argument(...)) -> None:
 @app.command()
 def models() -> None:
     """Lista los modelos descargados en Ollama."""
-    from llm_gateway.providers import OllamaProvider
+    from puente_llm.providers import OllamaProvider
 
     settings = Settings()
     try:

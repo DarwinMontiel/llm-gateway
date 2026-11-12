@@ -4,7 +4,7 @@ from collections.abc import Iterator, Sequence
 
 import pytest
 
-from llm_gateway import (
+from puente_llm import (
     AllProvidersFailedError,
     AuthenticationError,
     Completion,
@@ -13,7 +13,7 @@ from llm_gateway import (
     ProviderUnavailableError,
     RateLimitedError,
 )
-from llm_gateway.retry import with_retries
+from puente_llm.retry import with_retries
 
 
 class FakeProvider:

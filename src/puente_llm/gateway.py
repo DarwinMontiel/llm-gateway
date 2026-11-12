@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator, Sequence
 from functools import partial
 
-from llm_gateway.errors import (
+from puente_llm.errors import (
     AllProvidersFailedError,
     ProviderError,
     ProviderUnavailableError,
     RateLimitedError,
 )
-from llm_gateway.providers.base import Provider
-from llm_gateway.retry import with_retries
-from llm_gateway.types import Completion, Message
+from puente_llm.providers.base import Provider
+from puente_llm.retry import with_retries
+from puente_llm.types import Completion, Message
 
 FALLBACK_ON = (ProviderUnavailableError, RateLimitedError)
 

@@ -1,14 +1,14 @@
-"""llm-gateway: una sola interfaz para modelos de lenguaje locales (Ollama) y en la nube (Groq)."""
+"""puente-llm: una sola interfaz para modelos de lenguaje locales (Ollama) y en la nube (Groq)."""
 
-from llm_gateway.errors import (
+from puente_llm.errors import (
     AllProvidersFailedError,
     AuthenticationError,
     ProviderError,
     ProviderUnavailableError,
     RateLimitedError,
 )
-from llm_gateway.gateway import Gateway
-from llm_gateway.types import Completion, Message
+from puente_llm.gateway import Gateway
+from puente_llm.types import Completion, Message
 
 __version__ = "1.0.0"
 

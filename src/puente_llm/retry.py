@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from typing import TypeVar
 
-from llm_gateway.errors import ProviderUnavailableError, RateLimitedError
+from puente_llm.errors import ProviderUnavailableError, RateLimitedError
 
 T = TypeVar("T")
 

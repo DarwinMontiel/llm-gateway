@@ -5,9 +5,9 @@ import json
 import httpx
 import pytest
 
-from llm_gateway import Message, ProviderUnavailableError
-from llm_gateway.errors import ProviderError
-from llm_gateway.providers.ollama import OllamaProvider, iter_ndjson_text
+from puente_llm import Message, ProviderUnavailableError
+from puente_llm.errors import ProviderError
+from puente_llm.providers.ollama import OllamaProvider, iter_ndjson_text
 
 
 def test_complete_parses_chat_response_and_tokens(make_client) -> None:  # type: ignore[no-untyped-def]

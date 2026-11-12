@@ -4,7 +4,7 @@ Si Ollama no está corriendo, el gateway reintenta y responde con Groq (requiere
 Ejecutar: python examples/02_gateway_con_fallback.py
 """
 
-from llm_gateway.config import build_gateway
+from puente_llm.config import build_gateway
 
 gateway = build_gateway(["ollama", "groq"])
 
