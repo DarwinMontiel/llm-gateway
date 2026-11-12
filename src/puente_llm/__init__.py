@@ -10,7 +10,7 @@ from puente_llm.errors import (
 from puente_llm.gateway import Gateway
 from puente_llm.types import Completion, Message
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 __all__ = [
     "AllProvidersFailedError",
