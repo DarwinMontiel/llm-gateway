@@ -28,7 +28,6 @@ addopts = "-ra --strict-markers"
 
 [tool.coverage.run]
 source = ["puente_llm"]
-omit = ["*/cli.py"]
 
 [tool.ruff]
 line-length = 100
