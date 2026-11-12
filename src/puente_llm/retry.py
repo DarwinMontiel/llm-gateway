@@ -1,5 +1,8 @@
+"""Reintentos con backoff exponencial para errores transitorios."""
+
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable
 from typing import TypeVar
@@ -7,6 +10,8 @@ from typing import TypeVar
 from puente_llm.errors import ProviderUnavailableError, RateLimitedError
 
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 def with_retries(
@@ -29,5 +34,6 @@ def with_retries(
             delay = base_delay * 2 ** (attempt - 1)
             if isinstance(error, RateLimitedError) and error.retry_after:
                 delay = max(delay, error.retry_after)
+            logger.warning("%s; intento %d de %d en %.1f s", error, attempt + 1, attempts, delay)
             sleep(delay)
     raise AssertionError("inalcanzable")  # pragma: no cover

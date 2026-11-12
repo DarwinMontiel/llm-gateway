@@ -22,8 +22,10 @@ class FakeProvider:
     ) -> None:
         self.name = name
         self.failures = list(failures or [])
-        self.chunks = chunks or ["hola", " mundo"]
+        self.chunks = ["hola", " mundo"] if chunks is None else chunks
         self.calls: list[tuple[list[Message], str | None]] = []
+        self.stream_models: list[str | None] = []
+        self.closed = False
 
     def complete(
         self, messages: Sequence[Message], *, model: str | None = None, temperature: float = 0.2
@@ -41,9 +43,13 @@ class FakeProvider:
     def stream(
         self, messages: Sequence[Message], *, model: str | None = None, temperature: float = 0.2
     ) -> Iterator[str]:
+        self.stream_models.append(model)
         if self.failures:
             raise self.failures.pop(0)
         yield from self.chunks
+
+    def close(self) -> None:
+        self.closed = True
 
 
 def unavailable(name: str = "local") -> ProviderUnavailableError:
@@ -97,9 +103,70 @@ def test_all_providers_failing_reports_every_error() -> None:
 
 
 def test_stream_falls_back_only_before_first_chunk() -> None:
-    local = FakeProvider("local", failures=[unavailable()])
+    local = FakeProvider("local", failures=[unavailable(), unavailable()])
     cloud = FakeProvider("cloud", chunks=["desde", " la nube"])
-    assert "".join(Gateway([local, cloud]).stream("hola")) == "desde la nube"
+    gateway = Gateway([local, cloud], attempts=2, sleep=lambda _: None)
+    assert "".join(gateway.stream("hola")) == "desde la nube"
+
+
+def test_stream_retries_the_same_provider_before_falling_back() -> None:
+    sleeps: list[float] = []
+    local = FakeProvider("local", failures=[unavailable()], chunks=["promesa", " de pago"])
+    cloud = FakeProvider("cloud")
+    text = "".join(Gateway([local, cloud], attempts=2, sleep=sleeps.append).stream("hola"))
+
+    assert text == "promesa de pago"
+    assert sleeps == [0.5]
+    assert cloud.stream_models == []  # el respaldo no se usó
+
+
+def test_stream_applies_model_only_to_first_provider() -> None:
+    local = FakeProvider("local", failures=[unavailable(), unavailable()])
+    cloud = FakeProvider("cloud", chunks=["ok"])
+    gateway = Gateway([local, cloud], attempts=2, sleep=lambda _: None)
+
+    assert "".join(gateway.stream("hola", model="llama3.2")) == "ok"
+    assert local.stream_models == ["llama3.2", "llama3.2"]
+    assert cloud.stream_models == [None]
+
+
+def test_stream_all_failing_and_empty_stream() -> None:
+    local = FakeProvider("local", failures=[unavailable("local")] * 2)
+    with pytest.raises(AllProvidersFailedError):
+        list(Gateway([local], attempts=2, sleep=lambda _: None).stream("hola"))
+
+    assert list(Gateway([FakeProvider("vacío", chunks=[])]).stream("hola")) == []
+
+
+def test_stream_error_after_first_chunk_is_not_hidden() -> None:
+    class Interrupted(FakeProvider):
+        def stream(
+            self, messages: Sequence[Message], *, model: str | None = None, temperature: float = 0.2
+        ) -> Iterator[str]:
+            yield "Resumen:"
+            raise unavailable(self.name)
+
+    cloud = FakeProvider("cloud")
+    chunks = Gateway([Interrupted("local"), cloud]).stream("hola")
+    assert next(chunks) == "Resumen:"
+    with pytest.raises(ProviderUnavailableError):
+        next(chunks)
+    assert cloud.stream_models == []  # nunca se mezclan dos respuestas
+
+
+def test_gateway_closes_providers_as_context_manager() -> None:
+    local, cloud = FakeProvider("local"), FakeProvider("cloud")
+    with Gateway([local, cloud]) as gateway:
+        gateway.complete("hola")
+    assert local.closed
+    assert cloud.closed
+
+
+def test_fallback_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    local = FakeProvider("local", failures=[unavailable("local")] * 2)
+    Gateway([local, FakeProvider("cloud")], attempts=2, sleep=lambda _: None).complete("hola")
+    assert "intento 2 de 2" in caplog.text
+    assert "paso a cloud" in caplog.text
 
 
 def test_with_retries_respects_retry_after() -> None:
